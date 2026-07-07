@@ -1,21 +1,24 @@
 # Disk Cleanup Analyzer
 
-A comprehensive disk cleanup and analysis tool that identifies duplicate files, large files, temporary files, and unused files. Built with safety in mind—always shows findings before any deletion.
+A comprehensive disk cleanup and analysis tool with both CLI and modern GUI interfaces.
 
 ## 🚀 Features
 
-- **Duplicate Detection**: Finds files with identical content using MD5 hashing
-- **Large File Finder**: Identifies files above a customizable size threshold
-- **Temp File Scanner**: Locates temporary, backup, and cache files
-- **Unused File Detector**: Finds files not accessed for a specified period
-- **Safety First**: Dry run mode shows what would be deleted before actual cleanup
-- **Detailed Reports**: Generates both console output and JSON reports
-- **Smart Skipping**: Automatically ignores system directories (`.git`, `node_modules`, `.cache`, etc.)
+- **Duplicate Detection** - Finds files with identical content using MD5 hashing
+- **Large File Finder** - Identifies files above a customizable size threshold
+- **Temp File Scanner** - Locates temporary, backup, and cache files
+- **Unused File Detector** - Finds files not accessed for a specified period
+- **Safety First** - Dry run mode shows what would be deleted before actual cleanup
+- **Detailed Reports** - Generates both console output and JSON reports
+- **Smart Skipping** - Automatically ignores system directories (`.git`, `node_modules`, `.cache`, etc.)
+- **Drive Information** - Real-time disk usage, type (SSD/HDD), and capacity
+- **Progress Tracking** - Current folder, file count, elapsed time, and ETA
+- **Modern GUI** - Professional PySide6 interface with dark theme
 
 ## 📋 Requirements
 
-- Python 3.7+
-- No external dependencies (uses only Python standard library)
+- Python 3.8+
+- For GUI: PySide6 (optional, for modern interface)
 
 ## 🛠️ Installation
 
@@ -24,8 +27,8 @@ A comprehensive disk cleanup and analysis tool that identifies duplicate files, 
 git clone https://github.com/MoDuLah/disk-cleanup-analyzer.git
 cd disk-cleanup-analyzer
 
-# Make executable (optional)
-chmod +x disk_cleanup_analyzer.py
+# Install dependencies (optional for GUI)
+pip install -r requirements_pyside6.txt
 ```
 
 ## 💡 Quick Start
@@ -64,6 +67,38 @@ python3 disk_cleanup_analyzer.py . --cleanup /path/to/file1 /path/to/file2
 
 # ACTUAL DELETION: Requires explicit confirmation
 python3 disk_cleanup_analyzer.py . --cleanup /path/to/file1 /path/to/file2 --force
+```
+
+## 🖥️ GUI Usage
+
+### Classic Tkinter GUI
+```bash
+# Windows
+run_gui.bat
+
+# Linux/macOS
+python3 disk_cleanup_gui.py
+```
+
+### Modern PySide6 GUI (Recommended)
+```bash
+# Windows
+run_gui_pyside6.bat
+
+# Linux/macOS
+python3 disk_cleanup_gui_pyside6.py
+```
+
+**Note:** The PySide6 GUI requires additional graphics libraries on Linux:
+```bash
+# Ubuntu/Debian
+sudo apt-get install libegl1 libopengl0 libxcb-cursor0
+
+# macOS (usually included)
+pip install PySide6
+
+# Windows (included with PySide6)
+pip install PySide6
 ```
 
 ## 📖 Usage Examples
@@ -124,6 +159,7 @@ The tool provides:
 3. **Detailed Reporting**: Shows all findings before any action
 4. **Smart Exclusions**: Automatically skips system and dependency directories
 5. **Error Handling**: Gracefully handles permission issues and locked files
+6. **System File Protection**: Blocks deletion from critical directories (C:\Windows, /etc, /usr, etc.)
 
 ## 📁 Skipped Directories
 
@@ -132,50 +168,32 @@ The following directories are automatically excluded:
 - `node_modules`, `__pycache__` (dependencies)
 - `.venv`, `venv`, `env` (virtual environments)
 - `.cache`, `.npm`, `.cargo`, `.pip` (package caches)
-- `.hermes` (application data)
-- `/proc/`, `/sys/`, `/dev/` (system directories)
+- `/proc`, `/sys`, `/dev` (system directories)
 
-## 🛠️ Development
+## 🎨 Modern GUI Features
 
-### Running Tests
-```bash
-make test
-```
-
-### Code Quality
-```bash
-make lint
-```
-
-### Clean Build Artifacts
-```bash
-make clean
-```
+The PySide6 GUI includes:
+- **Dark theme** with professional styling
+- **Real-time progress** with ETA and elapsed time
+- **Drive information table** with usage statistics
+- **Interactive sliders** for settings
+- **Clean, organized layout**
+- **Syntax-highlighted logs**
+- **Progress bar** with percentage completion
 
 ## 📄 License
 
-MIT License - See [LICENSE](LICENSE) for details.
+MIT License - See LICENSE file for details
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Contributions are welcome! Please feel free to submit pull requests.
 
 ## 📞 Support
 
-For issues, questions, or suggestions, please open an issue on GitHub.
-
-## 🙏 Acknowledgments
-
-- Built with Python standard library only
-- Inspired by the need for safe, transparent disk cleanup tools
+- **Issues**: https://github.com/MoDuLah/disk-cleanup-analyzer/issues
+- **Documentation**: See README.md for detailed usage
 
 ---
 
-**Author**: MoDuLah  
-**Repository**: https://github.com/MoDuLah/disk-cleanup-analyzer
+**Built with ❤️ using Python and PySide6**
