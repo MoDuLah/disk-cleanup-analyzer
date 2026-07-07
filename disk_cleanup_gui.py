@@ -101,6 +101,9 @@ class DiskCleanupGUI:
         drive_frame = LabelFrame(main_frame, text="Select Drives to Scan", padx=10, pady=10)
         drive_frame.pack(fill=X, pady=(10, 0))
 
+        # Get available drives first
+        self.available_drives = self.get_available_drives()
+
         # Drive info display
         self.drive_info_frame = Frame(drive_frame)
         self.drive_info_frame.pack(fill=X, pady=(5, 10))
