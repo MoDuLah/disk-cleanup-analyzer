@@ -402,9 +402,10 @@ class ModernDiskCleanupGUI(QMainWindow):
 
     def apply_modern_style(self):
         """Apply modern dark theme styling."""
+        # Use system default styling - cleaner and more reliable
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #ecf0f1;
+                background-color: #f5f6fa;
             }
             QGroupBox {
                 font-weight: bold;
@@ -414,6 +415,7 @@ class ModernDiskCleanupGUI(QMainWindow):
                 margin-top: 10px;
                 padding-top: 10px;
                 background-color: white;
+                color: #2c3e50;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -429,6 +431,7 @@ class ModernDiskCleanupGUI(QMainWindow):
                 selection-color: white;
                 border: 1px solid #bdc3c7;
                 border-radius: 3px;
+                gridline-color: #ecf0f1;
             }
             QHeaderView::section {
                 background-color: #3498db;
@@ -450,31 +453,47 @@ class ModernDiskCleanupGUI(QMainWindow):
             QSlider::handle:horizontal {
                 background: #3498db;
                 border: 1px solid #2980b9;
-                width: 18px;
-                margin: -5px 0;
-                border-radius: 9px;
+                width: 16px;
+                margin: -4px 0;
+                border-radius: 8px;
             }
             QSlider::handle:horizontal:hover {
                 background: #2980b9;
             }
             QPushButton {
                 font-size: 13px;
-                padding: 8px 16px;
+                padding: 10px 20px;
                 border-radius: 5px;
                 border: none;
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
             }
             QPushButton:hover {
-                opacity: 0.9;
+                background-color: #2980b9;
+            }
+            QPushButton:disabled {
+                background-color: #95a5a6;
             }
             QProgressBar {
                 border: 2px solid #3498db;
                 border-radius: 5px;
                 text-align: center;
                 background-color: #ecf0f1;
+                height: 25px;
             }
             QProgressBar::chunk {
                 background-color: #3498db;
                 border-radius: 4px;
+            }
+            QTextEdit {
+                background-color: #2c3e50;
+                color: #ecf0f1;
+                border: 1px solid #34495e;
+                border-radius: 3px;
+                padding: 5px;
+                font-family: Consolas, monospace;
+                font-size: 11px;
             }
         """)
         
@@ -485,9 +504,27 @@ class ModernDiskCleanupGUI(QMainWindow):
         """Load available drives into the table."""
         drives = self.get_available_drives()
         self.drive_table.setRowCount(len(drives))
+        
+        # Set column widths for better readability
+        self.drive_table.setColumnWidth(0, 50)  # Select column
+        self.drive_table.setColumnWidth(1, 80)  # Drive column
+        self.drive_table.setColumnWidth(2, 80)  # Type column
+        self.drive_table.setColumnWidth(3, 80)  # Used column
+        self.drive_table.setColumnWidth(4, 80)  # Total column
+        self.drive_table.setColumnWidth(5, 80)  # Usage column
 
         for i, drive in enumerate(drives):
-            self.drive_table.setItem(i, 0, QTableWidgetItem("☐"))
+            # Create a checkbox widget for the first column
+            cb = QCheckBox()
+            cb.setChecked(False)
+            cb.setStyleSheet("""
+                QCheckBox {
+                    spacing: 5px;
+                }
+            """)
+            self.drive_table.setCellWidget(i, 0, cb)
+            
+            # Set other columns as text items
             self.drive_table.setItem(i, 1, QTableWidgetItem(drive))
 
             # Get drive info
@@ -543,12 +580,16 @@ class ModernDiskCleanupGUI(QMainWindow):
     def select_all_drives(self):
         """Select all drives."""
         for row in range(self.drive_table.rowCount()):
-            self.drive_table.item(row, 0).setText("☑")
+            cb = self.drive_table.cellWidget(row, 0)
+            if cb:
+                cb.setChecked(True)
 
     def deselect_all_drives(self):
         """Deselect all drives."""
         for row in range(self.drive_table.rowCount()):
-            self.drive_table.item(row, 0).setText("☐")
+            cb = self.drive_table.cellWidget(row, 0)
+            if cb:
+                cb.setChecked(False)
 
     def update_size_label(self, value):
         """Update min size label."""
@@ -565,7 +606,8 @@ class ModernDiskCleanupGUI(QMainWindow):
         # Get selected drives
         self.scan_paths = []
         for row in range(self.drive_table.rowCount()):
-            if self.drive_table.item(row, 0).text() == "☑":
+            cb = self.drive_table.cellWidget(row, 0)
+            if cb and cb.isChecked():
                 self.scan_paths.append(self.drive_table.item(row, 1).text())
 
         if not self.scan_paths:
