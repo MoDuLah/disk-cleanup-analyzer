@@ -506,19 +506,40 @@ class ModernDiskCleanupGUI(QMainWindow):
             try:
                 if os.name == 'nt':
                     import ctypes
+                    # Ensure proper drive format: "X:" or "X:\\"
                     drive_path = drive.rstrip('\\')
                     if not drive_path.endswith(':'):
-                        drive_path += '\\'
-
+                        drive_path += ':'
+                    
+                    # Get drive type
                     drive_type_num = ctypes.windll.kernel32.GetDriveTypeW(drive_path)
                     drive_type_map = {2: 'Removable', 3: 'Fixed', 4: 'Network', 5: 'CD-ROM', 6: 'RAM Disk'}
                     drive_type = drive_type_map.get(drive_type_num, 'Unknown')
-
-                    total_bytes, free_bytes, _ = ctypes.windll.kernel32.GetDiskFreeSpaceExW(drive_path)
-                    total_gb = total_bytes / (1024**3)
-                    free_gb = free_bytes / (1024**3)
-                    used_gb = (total_bytes - free_bytes) / (1024**3)
-                    usage_pct = ((total_bytes - free_bytes) / total_bytes * 100) if total_bytes > 0 else 0
+                    
+                    # Get disk space - use drive root path "X:\\"
+                    root_path = drive_path + '\\'
+                    total_bytes = ctypes.c_longlong(0)
+                    free_bytes = ctypes.c_longlong(0)
+                    available_bytes = ctypes.c_longlong(0)
+                    
+                    result = ctypes.windll.kernel32.GetDiskFreeSpaceExW(
+                        root_path,
+                        ctypes.byref(free_bytes),
+                        ctypes.byref(total_bytes),
+                        ctypes.byref(available_bytes)
+                    )
+                    
+                    if result != 0:
+                        total_gb = total_bytes.value / (1024**3)
+                        free_gb = free_bytes.value / (1024**3)
+                        used_gb = (total_bytes.value - free_bytes.value) / (1024**3)
+                        usage_pct = ((total_bytes.value - free_bytes.value) / total_bytes.value * 100) if total_bytes.value > 0 else 0
+                    else:
+                        # Fallback if GetDiskFreeSpaceEx fails
+                        total_gb = 0
+                        free_gb = 0
+                        used_gb = 0
+                        usage_pct = 0
                 else:
                     stat = os.statvfs(drive)
                     total_bytes = stat.f_blocks * stat.f_frsize
@@ -534,7 +555,10 @@ class ModernDiskCleanupGUI(QMainWindow):
                 self.drive_table.setItem(i, 4, QTableWidgetItem(f"{total_gb:.1f} GB"))
                 self.drive_table.setItem(i, 5, QTableWidgetItem(f"{usage_pct:.0f}%"))
 
-            except Exception:
+            except Exception as e:
+                # Log the error for debugging
+                import sys
+                print(f"Error getting drive info for {drive}: {e}", file=sys.stderr)
                 self.drive_table.setItem(i, 2, QTableWidgetItem("Unknown"))
                 self.drive_table.setItem(i, 3, QTableWidgetItem("-"))
                 self.drive_table.setItem(i, 4, QTableWidgetItem("-"))
