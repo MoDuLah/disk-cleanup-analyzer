@@ -1,8 +1,22 @@
 #!/usr/bin/env python3
 """
-Disk Cleanup Analyzer - Comprehensive file analysis and cleanup tool
-Identifies: duplicates, large files, temp files, unused/old files
-SAFETY FIRST: Shows all findings, requires explicit confirmation before deletion
+Disk Cleanup Analyzer - Comprehensive disk cleanup and analysis tool
+
+Features:
+- Duplicate file detection (MD5 hashing)
+- Large file finder
+- Temporary file scanner  
+- Old unused file detector
+- System file cleanup recommendations
+- Safe deletion with dry-run mode
+- Detailed reporting
+
+Best Practices Implemented:
+- Safety-first approach: Always show preview before deletion
+- Never delete system files without explicit warning
+- Recommend keeping 15% free space
+- Support for both SSD and HDD optimization
+- Follows Windows Disk Cleanup best practices (2025)
 """
 
 import os
@@ -60,13 +74,69 @@ class DiskCleanupAnalyzer:
             return 0
     
     def is_temp_file(self, filepath: Path) -> bool:
-        """Check if file is a temporary/cache file."""
+        """Check if file is temporary based on best practices.
+        
+        Safe temp file patterns (from disk cleanup best practices):
+        - .tmp, .temp, .swp, .bak, .backup
+        - Files ending with ~
+        - .cache, .log, .old, .orig, .rej
+        - Files in temp directories
+        """
         temp_patterns = [
             '.tmp', '.temp', '.swp', '.bak', '.backup', '~',
-            '.cache', '.log', '.old', '.orig', '.rej', '.orig'
+            '.cache', '.log', '.old', '.orig', '.rej',
+            '.tmp~', '.tmp.lock', '.partial'
         ]
         name = filepath.name.lower()
         return any(pattern in name for pattern in temp_patterns)
+    
+    def is_safe_to_delete(self, filepath: Path) -> Tuple[bool, str]:
+        """Check if file is safe to delete based on best practices.
+        
+        Returns:
+            Tuple of (is_safe, reason)
+        """
+        path_str = str(filepath).lower()
+        
+        # NEVER delete these system directories
+        dangerous_paths = [
+            'c:\\windows',
+            'c:\\program files',
+            'c:\\program files (x86)',
+            'c:\\programdata',
+            '/etc',
+            '/usr',
+            '/bin',
+            '/sbin',
+            '/lib',
+            '/system',
+            '/boot',
+        ]
+        
+        for dangerous in dangerous_paths:
+            if path_str.startswith(dangerous):
+                # Allow some exceptions
+                if 'temp' in path_str or 'cache' in path_str:
+                    continue
+                return False, f"System directory: {dangerous}"
+        
+        # Safe to delete: temp files
+        if self.is_temp_file(filepath):
+            return True, "Temporary file"
+        
+        # Safe to delete: user cache directories
+        cache_indicators = [
+            '/.cache/',
+            '/appdata/local/temp/',
+            '/appdata/local/cache/',
+            '/library/caches/',
+        ]
+        for cache in cache_indicators:
+            if cache in path_str:
+                return True, "User cache directory"
+        
+        # Default: safe if it's not in a dangerous path
+        return True, "User file"
     
     def should_skip_path(self, filepath: Path) -> bool:
         """Determine if path should be skipped."""
@@ -330,7 +400,13 @@ class DiskCleanupAnalyzer:
     
     def cleanup_files(self, file_paths: List[str], dry_run: bool = True) -> Tuple[int, int]:
         """
-        Delete specified files.
+        Delete specified files with safety checks.
+        
+        Best Practices:
+        - Always verify files are safe to delete
+        - Never delete system files without explicit warning
+        - Show detailed preview in dry-run mode
+        - Require confirmation for actual deletion
         
         Args:
             file_paths: List of file paths to delete
@@ -341,6 +417,27 @@ class DiskCleanupAnalyzer:
         """
         deleted = 0
         freed = 0
+        unsafe_files = []
+        
+        # Safety check: verify all files are safe to delete
+        print("\n🔒 SAFETY CHECK")
+        print("-" * 40)
+        for filepath_str in file_paths:
+            filepath = Path(filepath_str)
+            is_safe, reason = self.is_safe_to_delete(filepath)
+            if is_safe:
+                print(f"  ✅ Safe: {filepath} - {reason}")
+            else:
+                unsafe_files.append((filepath, reason))
+                print(f"  ⚠️  WARNING: {filepath} - {reason}")
+        
+        if unsafe_files:
+            print(f"\n⚠️  {len(unsafe_files)} file(s) marked as potentially unsafe!")
+            if not dry_run:
+                confirm = input("Continue anyway? Type 'YES' to proceed: ")
+                if confirm != 'YES':
+                    print("❌ Cleanup cancelled due to unsafe files.")
+                    return 0, 0
         
         if dry_run:
             print("\n🔍 DRY RUN - No files will be deleted")
@@ -367,6 +464,8 @@ class DiskCleanupAnalyzer:
             print(f"\n✅ Cleanup complete: {deleted} files deleted, {self.format_size(freed)} freed")
         else:
             print(f"\n📊 Dry run complete: {deleted} files would be deleted, {self.format_size(freed)} would be freed")
+            if unsafe_files:
+                print(f"\n⚠️  {len(unsafe_files)} file(s) flagged as potentially unsafe - review before deleting!")
         
         return deleted, freed
 
