@@ -124,8 +124,8 @@ class DiskCleanupGUI:
         size_slider = Scale(size_frame, from_=1, to=100, orient=HORIZONTAL,
                             variable=self.size_var, command=self.update_min_size)
         size_slider.pack(side=LEFT, fill=X, expand=True, padx=10)
-        self.size_label = Label(size_frame, text=f"{self.min_size_mb:.0f} MB")
-        self.size_label.pack(side=RIGHT, width=60)
+        self.size_label = Label(size_frame, text=f"{self.min_size_mb:.0f} MB", width=10)
+        self.size_label.pack(side=RIGHT)
 
         # Min age slider
         age_frame = Frame(settings_frame)
@@ -136,8 +136,8 @@ class DiskCleanupGUI:
         age_slider = Scale(age_frame, from_=30, to=3650, orient=HORIZONTAL,
                            variable=self.age_var, command=self.update_min_age)
         age_slider.pack(side=LEFT, fill=X, expand=True, padx=10)
-        self.age_label = Label(age_frame, text=f"{self.min_age_days} days")
-        self.age_label.pack(side=RIGHT, width=80)
+        self.age_label = Label(age_frame, text=f"{self.min_age_days} days", width=12)
+        self.age_label.pack(side=RIGHT)
 
         # Action buttons
         button_frame = Frame(main_frame)
