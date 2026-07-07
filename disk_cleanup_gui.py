@@ -167,13 +167,15 @@ class DiskCleanupGUI:
             if i < 2:
                 var.set(1)
 
-        # "Select All" and "Deselect All" buttons - use grid to match checkboxes
-        Button(drive_frame, text="Select All",
+        # "Select All" and "Deselect All" buttons - use pack to match drive_frame
+        button_frame = Frame(drive_frame)
+        button_frame.pack(fill=X, pady=10)
+        Button(button_frame, text="Select All",
                command=lambda: self.set_all_drives(True),
-               font=('Helvetica', 9, 'bold')).grid(row=len(self.available_drives) // 4 + 1, column=0, sticky=W, padx=5, pady=10)
-        Button(drive_frame, text="Deselect All",
+               font=('Helvetica', 9, 'bold')).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Deselect All",
                command=lambda: self.set_all_drives(False),
-               font=('Helvetica', 9, 'bold')).grid(row=len(self.available_drives) // 4 + 1, column=1, sticky=W, padx=5, pady=10)
+               font=('Helvetica', 9, 'bold')).pack(side=LEFT, padx=5)
 
         # Settings frame
         settings_frame = LabelFrame(main_frame, text="Settings", padx=10, pady=10)
