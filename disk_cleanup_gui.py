@@ -16,7 +16,7 @@ from datetime import datetime
 from tkinter import (
     Tk, ttk, Label, Button, Frame, Scrollbar, Text, 
     Checkbutton, IntVar, Scale, LabelFrame, messagebox, 
-    filedialog, END, INSERT, Y, BOTH, HORIZONTAL, NW
+    filedialog, END, INSERT, X, Y, BOTH, HORIZONTAL, NW
 )
 
 class DiskCleanupGUI:
