@@ -10,6 +10,8 @@ Features:
 - System file cleanup recommendations
 - Safe deletion with dry-run mode
 - Detailed reporting
+- Drive type detection (HDD/SSD)
+- Disk space analysis (total/available)
 
 Best Practices Implemented:
 - Safety-first approach: Always show preview before deletion
@@ -23,6 +25,7 @@ import os
 import hashlib
 import json
 import time
+import platform
 from pathlib import Path
 from collections import defaultdict
 from datetime import datetime
@@ -43,7 +46,10 @@ class DiskCleanupAnalyzer:
         self.file_hashes = defaultdict(list)
         self.total_size = 0
         self.file_count = 0
+        self.all_files = []
         
+        # Disk information
+        self.disk_info = self.get_disk_info(self.root_path)
     def calculate_file_hash(self, filepath: Path, chunk_size: int = 8192) -> str:
         """Calculate MD5 hash of file content for duplicate detection."""
         hash_md5 = hashlib.md5()
@@ -72,6 +78,86 @@ class DiskCleanupAnalyzer:
             return (now - atime) / (24 * 3600)
         except (IOError, OSError):
             return 0
+
+    def get_disk_info(self, path: Path) -> Dict:
+        """Get disk information including type, total space, and available space.
+        
+        Returns:
+            Dictionary with disk information:
+            - drive_letter: Drive identifier
+            - total_space_gb: Total space in GB
+            - free_space_gb: Free space in GB
+            - used_space_gb: Used space in GB
+            - usage_percent: Percentage of disk used
+            - drive_type: 'SSD', 'HDD', or 'Unknown'
+            - is_safe: Whether drive is safe to scan
+        """
+        try:
+            # Get disk usage statistics
+            if os.name == 'nt':  # Windows
+                import ctypes
+                drive_path = str(path.drive) if path.drive else "C:\\"
+                if not drive_path.endswith('\\'):
+                    drive_path += '\\'
+                
+                # Get drive type
+                drive_type_num = ctypes.windll.kernel32.GetDriveTypeW(drive_path)
+                drive_type_map = {
+                    2: 'Removable',
+                    3: 'Fixed',
+                    4: 'Network',
+                    5: 'CD-ROM',
+                    6: 'RAM Disk'
+                }
+                drive_type = drive_type_map.get(drive_type_num, 'Unknown')
+                
+                # Get disk space
+                total_bytes, free_bytes, available_bytes = ctypes.windll.kernel32.GetDiskFreeSpaceExW(drive_path)
+                
+            else:  # Linux/macOS
+                stat = os.statvfs(path)
+                total_bytes = stat.f_blocks * stat.f_frsize
+                free_bytes = stat.f_bfree * stat.f_frsize
+                available_bytes = stat.f_bavail * stat.f_frsize
+                drive_type = 'Unknown'  # Can't easily detect on Linux/macOS without additional tools
+                
+                # Try to detect SSD/HDD from path
+                path_str = str(path)
+                if any(ssd in path_str.lower() for ssd in ['nvme', 'ssd', 'solid']):
+                    drive_type = 'SSD'
+                elif any(hdd in path_str.lower() for hdd in ['hdd', '机械', 'rotational']):
+                    drive_type = 'HDD'
+            
+            # Calculate values
+            total_gb = total_bytes / (1024**3)
+            free_gb = free_bytes / (1024**3)
+            used_gb = (total_bytes - free_bytes) / (1024**3)
+            usage_percent = ((total_bytes - free_bytes) / total_bytes * 100) if total_bytes > 0 else 0
+            
+            # Determine if safe to scan
+            is_safe = drive_type not in ['CD-ROM', 'Removable']
+            
+            return {
+                'drive_letter': str(path.drive) if path.drive else str(path.parts[0] if path.parts else '/'),
+                'total_space_gb': total_gb,
+                'free_space_gb': free_gb,
+                'used_space_gb': used_gb,
+                'usage_percent': usage_percent,
+                'drive_type': drive_type,
+                'is_safe': is_safe
+            }
+            
+        except Exception as e:
+            return {
+                'drive_letter': str(path.drive) if path.drive else str(path.parts[0] if path.parts else '/'),
+                'total_space_gb': 0,
+                'free_space_gb': 0,
+                'used_space_gb': 0,
+                'usage_percent': 0,
+                'drive_type': 'Unknown',
+                'is_safe': True,
+                'error': str(e)
+            }
     
     def is_temp_file(self, filepath: Path) -> bool:
         """Check if file is temporary based on best practices.

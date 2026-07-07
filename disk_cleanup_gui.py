@@ -97,16 +97,67 @@ class DiskCleanupGUI:
         drive_frame = LabelFrame(main_frame, text="Select Drives to Scan",
                                  padx=10, pady=10)
         drive_frame.pack(fill=X, pady=(0, 10))
+        # Drive selection frame
+        drive_frame = LabelFrame(main_frame, text="Select Drives to Scan", padx=10, pady=10)
+        drive_frame.pack(fill=X, pady=(10, 0))
 
-        # Get available drives
-        self.available_drives = self.get_available_drives()
+        # Drive info display
+        self.drive_info_frame = Frame(drive_frame)
+        self.drive_info_frame.pack(fill=X, pady=(5, 10))
 
-        # Create checkboxes for each drive
+        # Create drive checkboxes with info
         self.drive_vars = {}
+        self.drive_info_labels = {}
+        
         for i, drive in enumerate(self.available_drives):
             var = IntVar(value=0)
-            cb = Checkbutton(drive_frame, text=drive, variable=var)
-            cb.grid(row=i // 4, column=i % 4, sticky=W, padx=5, pady=2)
+            
+            # Get disk info for this drive
+            try:
+                import os
+                if os.name == 'nt':
+                    import ctypes
+                    drive_path = drive.rstrip('\\')
+                    if not drive_path.endswith(':'):
+                        drive_path += '\\'
+                    
+                    # Get drive type
+                    drive_type_num = ctypes.windll.kernel32.GetDriveTypeW(drive_path)
+                    drive_type_map = {2: 'Removable', 3: 'Fixed', 4: 'Network', 5: 'CD-ROM', 6: 'RAM Disk'}
+                    drive_type = drive_type_map.get(drive_type_num, 'Unknown')
+                    
+                    # Get disk space
+                    total_bytes, free_bytes, available_bytes = ctypes.windll.kernel32.GetDiskFreeSpaceExW(drive_path)
+                    total_gb = total_bytes / (1024**3)
+                    free_gb = free_bytes / (1024**3)
+                    used_gb = (total_bytes - free_bytes) / (1024**3)
+                    usage_pct = ((total_bytes - free_bytes) / total_bytes * 100) if total_bytes > 0 else 0
+                else:
+                    stat = os.statvfs(drive)
+                    total_bytes = stat.f_blocks * stat.f_frsize
+                    free_bytes = stat.f_bfree * stat.f_frsize
+                    total_gb = total_bytes / (1024**3)
+                    free_gb = free_bytes / (1024**3)
+                    used_gb = (total_bytes - free_bytes) / (1024**3)
+                    usage_pct = ((total_bytes - free_bytes) / total_bytes * 100) if total_bytes > 0 else 0
+                    drive_type = 'Fixed'
+                
+                # Drive info label with modern formatting
+                info_text = f"{drive} [{drive_type}] | {used_gb:.1f}GB / {total_gb:.1f}GB ({usage_pct:.0f}% used)"
+                info_label = Label(self.drive_info_frame, text=info_text, font=('Helvetica', 9), fg='#444')
+                info_label.grid(row=i, column=1, sticky=W, padx=(10, 0), pady=2)
+                self.drive_info_labels[drive] = info_label
+                
+            except Exception as e:
+                # Fallback if disk info unavailable
+                cb = Checkbutton(self.drive_info_frame, text=drive, variable=var)
+                cb.grid(row=i, column=0, sticky=W, pady=2)
+                self.drive_vars[drive] = var
+                continue
+            
+            # Checkbox
+            cb = Checkbutton(self.drive_info_frame, variable=var)
+            cb.grid(row=i, column=0, sticky=W, pady=2)
             self.drive_vars[drive] = var
 
             # Check first 2 drives by default
@@ -343,8 +394,11 @@ class DiskCleanupGUI:
         self.update_status("Stopped")
 
     def run_scan(self):
-        """Run the actual scanning process."""
+        """Run the actual scanning process with enhanced progress tracking."""
         try:
+            import time
+            start_time = time.time()
+            
             # Reset results
             self.results = {
                 'duplicates': [],
@@ -417,15 +471,22 @@ class DiskCleanupGUI:
             self.progress_label.config(text="Scan complete")
 
     def scan_directory(self, scan_path):
-        """Scan a directory for files."""
+        """Scan a directory for files with progress tracking."""
         scan_path = Path(scan_path)
-
+        
+        # Count total files first for progress tracking
+        total_files = sum(1 for _ in os.walk(scan_path) for __ in _[2])
+        current_file = 0
+        
         for root, dirs, filenames in os.walk(scan_path):
             if not self.is_scanning:
                 break
 
             # Filter out skip directories
             dirs[:] = [d for d in dirs if not self.should_skip_path(Path(root) / d)]
+            
+            current_folder = str(root)
+            current_file_count = 0
 
             for filename in filenames:
                 if not self.is_scanning:
@@ -440,14 +501,47 @@ class DiskCleanupGUI:
                 self.file_count += 1
                 self.total_size += self.get_file_size(filepath)
                 self.all_files.append(filepath)
+                current_file_count += 1
 
-                # Update progress every 1000 files
-                if self.file_count % 1000 == 0:
-                    self.update_progress(self.file_count, self.file_count,
-                                         f"Size: {self.format_size(self.total_size)}")
+                # Update progress every 100 files with detailed info
+                if self.file_count % 100 == 0:
+                    # Calculate elapsed time and ETA
+                    elapsed = time.time() - start_time
+                    if self.file_count > 0:
+                        files_per_sec = self.file_count / elapsed
+                        remaining_files = total_files - self.file_count
+                        eta_seconds = remaining_files / files_per_sec if files_per_sec > 0 else 0
+                        
+                        # Format ETA
+                        if eta_seconds < 60:
+                            eta_str = f"{eta_seconds:.0f}s"
+                        elif eta_seconds < 3600:
+                            eta_str = f"{eta_seconds/60:.0f}m"
+                        else:
+                            eta_str = f"{eta_seconds/3600:.1f}h"
+                        
+                        # Format elapsed time
+                        if elapsed < 60:
+                            elapsed_str = f"{elapsed:.0f}s"
+                        elif elapsed < 3600:
+                            elapsed_str = f"{elapsed/60:.0f}m"
+                        else:
+                            elapsed_str = f"{elapsed/3600:.1f}h"
+                        
+                        progress_msg = (f"Scanning: {Path(current_folder).name} | "
+                                      f"{self.file_count:,} files | "
+                                      f"Elapsed: {elapsed_str} | ETA: {eta_str}")
+                    else:
+                        progress_msg = f"Scanning: {Path(current_folder).name}"
+                    
+                    self.update_progress(self.file_count, total_files,
+                                        f"{progress_msg} | Size: {self.format_size(self.total_size)}")
 
-        self.update_progress(self.file_count, self.file_count,
-                             f"Total: {self.format_size(self.total_size)}")
+        # Final progress update
+        elapsed = time.time() - start_time
+        elapsed_str = f"{elapsed:.1f}s" if elapsed < 60 else f"{elapsed/60:.1f}m"
+        self.update_progress(self.file_count, total_files,
+                            f"Complete | {self.file_count:,} files scanned in {elapsed_str} | {self.format_size(self.total_size)}")
 
     def should_skip_path(self, filepath):
         """Determine if path should be skipped."""
