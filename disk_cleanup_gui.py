@@ -53,6 +53,16 @@ class DiskCleanupGUI:
         self.file_count = 0
         self.all_files = []
         self.is_scanning = False
+        
+        # Scan type options
+        self.scan_duplicates = IntVar(value=1)
+        self.scan_large = IntVar(value=1)
+        self.scan_temp = IntVar(value=1)
+        self.scan_old = IntVar(value=1)
+        
+        # Cleanup options
+        self.enable_cleanup = IntVar(value=0)
+        self.dry_run = IntVar(value=1)  # Default to dry run for safety
 
         # Start polling the queue for thread-safe updates
         self._process_queue()
@@ -139,6 +149,27 @@ class DiskCleanupGUI:
         self.age_label = Label(age_frame, text=f"{self.min_age_days} days", width=12)
         self.age_label.pack(side=RIGHT)
 
+        # Scan type options frame
+        scan_options_frame = LabelFrame(main_frame, text="Scan Options", padx=10, pady=10)
+        scan_options_frame.pack(fill=X, pady=(0, 10))
+
+        # Create checkboxes for scan types
+        Checkbutton(scan_options_frame, text="Find Duplicates", variable=self.scan_duplicates).pack(anchor=W)
+        Checkbutton(scan_options_frame, text="Find Large Files", variable=self.scan_large).pack(anchor=W)
+        Checkbutton(scan_options_frame, text="Find Temp Files", variable=self.scan_temp).pack(anchor=W)
+        Checkbutton(scan_options_frame, text="Find Old Unused Files", variable=self.scan_old).pack(anchor=W)
+
+        # Cleanup options frame
+        cleanup_frame = LabelFrame(main_frame, text="Cleanup Options", padx=10, pady=10)
+        cleanup_frame.pack(fill=X, pady=(0, 10))
+
+        Checkbutton(cleanup_frame, text="Enable Cleanup Mode", variable=self.enable_cleanup,
+                    command=self.toggle_cleanup_options).pack(anchor=W)
+        
+        self.dry_run_checkbox = Checkbutton(cleanup_frame, text="Test Run (Preview only - NO deletion)", 
+                                            variable=self.dry_run, state=DISABLED)
+        self.dry_run_checkbox.pack(anchor=W)
+
         # Action buttons
         button_frame = Frame(main_frame)
         button_frame.pack(fill=X, pady=(0, 10))
@@ -158,6 +189,12 @@ class DiskCleanupGUI:
 
         Button(button_frame, text="Exit",
                command=self.root.quit, width=10).pack(side=RIGHT, padx=5)
+        
+        # Cleanup button (initially disabled)
+        self.cleanup_button = Button(button_frame, text="Clean Selected",
+                                     command=self.start_cleanup, state=DISABLED,
+                                     width=15, fg='red')
+        self.cleanup_button.pack(side=RIGHT, padx=5)
 
         # Results text area with scrollbar
         results_frame = Frame(main_frame)
@@ -204,6 +241,16 @@ class DiskCleanupGUI:
         """Set all drive checkboxes to value."""
         for var in self.drive_vars.values():
             var.set(1 if value else 0)
+
+    def toggle_cleanup_options(self):
+        """Enable/disable cleanup options based on enable_cleanup checkbox."""
+        if self.enable_cleanup.get():
+            self.dry_run_checkbox.config(state=NORMAL)
+            self.cleanup_button.config(state=NORMAL)
+            self.log("\n⚠ Cleanup mode enabled. Ensure 'Test Run' is checked for safety!")
+        else:
+            self.dry_run_checkbox.config(state=DISABLED)
+            self.cleanup_button.config(state=DISABLED)
 
     def update_min_size(self, value):
         """Update minimum file size setting."""
@@ -319,25 +366,33 @@ class DiskCleanupGUI:
                 self.log(f"\nScanning: {scan_path}")
                 self.scan_directory(scan_path)
 
-            # Find duplicates
-            if self.is_scanning:
+            # Find duplicates (if selected)
+            if self.is_scanning and self.scan_duplicates.get():
                 self.log("\nFinding duplicates...")
                 self.find_duplicates()
+            elif self.is_scanning:
+                self.results['duplicates'] = []
 
-            # Find large files
-            if self.is_scanning:
+            # Find large files (if selected)
+            if self.is_scanning and self.scan_large.get():
                 self.log(f"\nFinding large files (>{self.min_size_mb}MB)...")
                 self.find_large_files()
+            elif self.is_scanning:
+                self.results['large_files'] = []
 
-            # Find temp files
-            if self.is_scanning:
+            # Find temp files (if selected)
+            if self.is_scanning and self.scan_temp.get():
                 self.log("\nFinding temporary files...")
                 self.find_temp_files()
+            elif self.is_scanning:
+                self.results['temp_files'] = []
 
-            # Find old unused files
-            if self.is_scanning:
+            # Find old unused files (if selected)
+            if self.is_scanning and self.scan_old.get():
                 self.log(f"\nFinding files unused for >{self.min_age_days} days...")
                 self.find_old_unused_files()
+            elif self.is_scanning:
+                self.results['old_unused_files'] = []
 
             # Generate summary
             if self.is_scanning:
@@ -591,11 +646,135 @@ class DiskCleanupGUI:
             messagebox.showinfo("Success", f"Report saved to:\n{filename}")
 
     def cleanup_selected(self):
-        """Delete selected files."""
+        """Delete selected files (placeholder for now)."""
         messagebox.showinfo("Cleanup",
                             "File cleanup feature coming soon!\n\n"
                             "For now, use the command-line version:\n"
                             "python disk_cleanup_analyzer.py --cleanup <file1> <file2> --force")
+
+    def start_cleanup(self):
+        """Start the cleanup process based on scan results."""
+        if not self.enable_cleanup.get():
+            messagebox.showwarning("Warning", "Please enable cleanup mode first.")
+            return
+
+        # Collect all files to potentially delete
+        files_to_delete = []
+        
+        # Add duplicates (keep first, mark rest for deletion)
+        for dup_group in self.results.get('duplicates', []):
+            # Skip the first file in each group (keep it)
+            for filepath in dup_group['files'][1:]:
+                files_to_delete.append({
+                    'path': filepath,
+                    'size': dup_group['size'],
+                    'reason': f"Duplicate of {dup_group['files'][0]}"
+                })
+        
+        # Add large files
+        for large_file in self.results.get('large_files', []):
+            files_to_delete.append({
+                'path': large_file['path'],
+                'size': large_file['size'],
+                'reason': f"Large file ({large_file['size_mb']:.2f} MB)"
+            })
+        
+        # Add temp files
+        for temp_file in self.results.get('temp_files', []):
+            files_to_delete.append({
+                'path': temp_file['path'],
+                'size': temp_file['size'],
+                'reason': "Temporary file"
+            })
+        
+        # Add old unused files
+        for old_file in self.results.get('old_unused_files', []):
+            files_to_delete.append({
+                'path': old_file['path'],
+                'size': old_file['size'],
+                'reason': f"Unused for {old_file['age_days']} days"
+            })
+
+        if not files_to_delete:
+            messagebox.showinfo("Info", "No files selected for cleanup based on your scan options.")
+            return
+
+        # Calculate total space to be freed
+        total_space = sum(f['size'] for f in files_to_delete)
+        
+        # Show preview
+        if self.dry_run.get():
+            # DRY RUN - just show what WOULD be deleted
+            preview_msg = f"🔍 TEST RUN - NO FILES WILL BE DELETED\n\n"
+            preview_msg += f"Files that would be deleted: {len(files_to_delete)}\n"
+            preview_msg += f"Total space to be freed: {self.format_size(total_space)}\n\n"
+            preview_msg += "-" * 60 + "\n\n"
+            
+            # Show first 10 files as preview
+            for i, f in enumerate(files_to_delete[:10], 1):
+                preview_msg += f"{i}. {f['path']}\n   Reason: {f['reason']}\n   Size: {self.format_size(f['size'])}\n\n"
+            
+            if len(files_to_delete) > 10:
+                preview_msg += f"... and {len(files_to_delete) - 10} more files\n"
+            
+            preview_msg += "\n" + "=" * 60 + "\n"
+            preview_msg += "✅ This is a TEST RUN - No files will actually be deleted!\n"
+            preview_msg += "To actually delete, uncheck 'Test Run' and click Clean Selected again."
+            
+            messagebox.showinfo("Test Run Preview", preview_msg)
+            self.log(f"\n🔍 TEST RUN: {len(files_to_delete)} files would be deleted ({self.format_size(total_space)})")
+            self.log("No files were actually deleted - this was just a preview!")
+        else:
+            # ACTUAL DELETION - require confirmation
+            confirm_msg = f"⚠️  WARNING: This will PERMANENTLY DELETE files!\n\n"
+            confirm_msg += f"Files to delete: {len(files_to_delete)}\n"
+            confirm_msg += f"Total space to free: {self.format_size(total_space)}\n\n"
+            confirm_msg += "-" * 60 + "\n\n"
+            
+            # Show first 5 files
+            for i, f in enumerate(files_to_delete[:5], 1):
+                confirm_msg += f"{i}. {f['path']}\n"
+            
+            if len(files_to_delete) > 5:
+                confirm_msg += f"... and {len(files_to_delete) - 5} more files\n"
+            
+            confirm_msg += "\n" + "=" * 60 + "\n"
+            confirm_msg += "Are you SURE you want to proceed?\n"
+            confirm_msg += "This action CANNOT be undone!"
+            
+            if messagebox.askyesno("Confirm Deletion", confirm_msg, icon='warning'):
+                # Actually delete the files
+                deleted_count = 0
+                failed_count = 0
+                
+                self.log(f"\n{'=' * 60}")
+                self.log("BEGINNING ACTUAL DELETION...")
+                self.log(f"{'=' * 60}\n")
+                
+                for f in files_to_delete:
+                    try:
+                        os.remove(f['path'])
+                        deleted_count += 1
+                        self.log(f"✅ Deleted: {f['path']}")
+                    except Exception as e:
+                        failed_count += 1
+                        self.log(f"❌ Failed to delete: {f['path']} - {str(e)}")
+                
+                self.log(f"\n{'=' * 60}")
+                self.log(f"DELETION COMPLETE")
+                self.log(f"Successfully deleted: {deleted_count} files")
+                if failed_count > 0:
+                    self.log(f"Failed to delete: {failed_count} files")
+                self.log(f"Total space freed: {self.format_size(total_space)}")
+                self.log(f"{'=' * 60}\n")
+                
+                messagebox.showinfo("Cleanup Complete", 
+                                    f"Successfully deleted {deleted_count} files.\n"
+                                    f"Failed to delete {failed_count} files.\n"
+                                    f"Total space freed: {self.format_size(total_space)}")
+            else:
+                self.log("\n❌ Deletion cancelled by user.")
+                messagebox.showinfo("Cancelled", "Deletion was cancelled.")
 
 
 def main():
