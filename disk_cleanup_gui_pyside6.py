@@ -400,8 +400,7 @@ class ModernDiskCleanupGUI(QMainWindow):
         self.load_drives()
 
     def apply_modern_style(self):
-        """Apply modern dark theme styling."""
-        # Use system default styling - cleaner and more reliable
+        """Apply clean, professional styling with proper contrast."""
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #f5f6fa;
@@ -486,9 +485,9 @@ class ModernDiskCleanupGUI(QMainWindow):
                 border-radius: 4px;
             }
             QTextEdit {
-                background-color: #2c3e50;
-                color: #ecf0f1;
-                border: 1px solid #34495e;
+                background-color: white;
+                color: #000000;
+                border: 1px solid #bdc3c7;
                 border-radius: 3px;
                 padding: 5px;
                 font-family: Consolas, monospace;
