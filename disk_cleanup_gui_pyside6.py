@@ -301,49 +301,20 @@ class ModernDiskCleanupGUI(QMainWindow):
         # Action buttons
         action_layout = QHBoxLayout()
         self.start_btn = QPushButton("▶ Start Scan")
-        self.start_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                font-size: 14px;
-                font-weight: bold;
-                padding: 10px 20px;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #2ecc71;
-            }
-            QPushButton:disabled {
-                background-color: #95a5a6;
-            }
-        """)
         self.start_btn.clicked.connect(self.start_scan)
-        self.start_btn.setEnabled(False)
+        self.start_btn.setEnabled(False)  # Will be enabled when drives are selected
 
         self.stop_btn = QPushButton("⏹ Stop")
-        self.stop_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                font-size: 14px;
-                font-weight: bold;
-                padding: 10px 20px;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #ff6b6b;
-            }
-            QPushButton:disabled {
-                background-color: #95a5a6;
-            }
-        """)
         self.stop_btn.clicked.connect(self.stop_scan)
-        self.stop_btn.setEnabled(False)
+        self.stop_btn.setEnabled(False)  # Only enabled during scan
 
         action_layout.addWidget(self.start_btn)
         action_layout.addWidget(self.stop_btn)
         action_layout.addStretch()
         top_layout.addLayout(action_layout)
+        
+        # Connect drive selection changes to button state
+        self.drive_table.itemChanged.connect(self.update_scan_button_state)
 
         splitter.addWidget(top_widget)
 
@@ -604,6 +575,18 @@ class ModernDiskCleanupGUI(QMainWindow):
         """Update min age label."""
         self.min_age_days = int(value)
         self.age_label.setText(f"{value} days")
+
+    def update_scan_button_state(self):
+        """Enable/disable Start button based on drive selection."""
+        has_selection = False
+        for row in range(self.drive_table.rowCount()):
+            cb = self.drive_table.cellWidget(row, 0)
+            if cb and cb.isChecked():
+                has_selection = True
+                break
+        
+        self.start_btn.setEnabled(has_selection and not self.is_scanning)
+        self.stop_btn.setEnabled(self.is_scanning)
 
     def start_scan(self):
         """Start the scanning process."""
