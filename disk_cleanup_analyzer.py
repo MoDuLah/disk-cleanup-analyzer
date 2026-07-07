@@ -11,8 +11,8 @@ import json
 import time
 from pathlib import Path
 from collections import defaultdict
-from datetime import datetime, timedelta
-from typing import Dict, List, Set, Tuple
+from datetime import datetime
+from typing import Dict, List, Tuple
 
 class DiskCleanupAnalyzer:
     """Analyze disk for redundant, duplicate, and unused files."""
@@ -86,7 +86,7 @@ class DiskCleanupAnalyzer:
             filepath_str = str(filepath)
             if any(system in filepath_str for system in ['/proc/', '/sys/', '/dev/']):
                 return True
-        except:
+        except (IOError, OSError):
             return True
             
         return False
