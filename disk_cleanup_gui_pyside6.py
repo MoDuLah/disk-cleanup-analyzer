@@ -183,6 +183,15 @@ class ModernDiskCleanupGUI(QMainWindow):
         self.scan_paths = []
         self.is_scanning = False
 
+        # Set up scroll area first
+        self.setCentralWidget(QWidget())
+        main_scroll = QScrollArea()
+        main_scroll.setWidgetResizable(True)
+        main_scroll.setFrameShape(QScrollArea.NoFrame)
+        self.central_scroll = QWidget()
+        main_scroll.setWidget(self.central_scroll)
+        self.setCentralWidget(main_scroll)
+        
         self.init_ui()
         self.apply_modern_style()
         
@@ -194,18 +203,8 @@ class ModernDiskCleanupGUI(QMainWindow):
         """Initialize the user interface with scrollable areas for small screens."""
         self.setWindowTitle("Disk Cleanup Analyzer - Modern")
         
-        # Central widget with scroll area for better fit on small screens
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        
-        # Main layout with scroll area
-        main_scroll = QScrollArea()
-        main_scroll.setWidgetResizable(True)
-        main_scroll.setFrameShape(QScrollArea.NoFrame)
-        central_scroll = QWidget()
-        main_scroll.setWidget(central_scroll)
-        
-        main_layout = QVBoxLayout(central_scroll)
+        # Use the central_scroll created in __init__
+        main_layout = QVBoxLayout(self.central_scroll)
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(15, 15, 15, 15)
 
@@ -496,9 +495,6 @@ class ModernDiskCleanupGUI(QMainWindow):
                 font-size: 11px;
             }
         """)
-        
-        # Add the scroll area to the main window
-        self.setCentralWidget(main_scroll)
 
     def load_drives(self):
         """Load available drives into the table."""
