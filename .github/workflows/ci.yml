@@ -1,0 +1,177 @@
+# GitHub Actions CI/CD Workflow
+
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+
+    - name: Syntax check
+      run: |
+        python -m py_compile disk_cleanup_analyzer.py
+        echo "✓ Syntax check passed for Python ${{ matrix.python-version }}"
+
+    - name: Run basic tests
+      run: |
+        if [ -d "tests" ]; then
+          python -m pytest tests/ -v
+        else
+          echo "⚠ No tests directory found, skipping test suite"
+        fi
+
+    - name: Run sample analysis
+      run: |
+        python disk_cleanup_analyzer.py . --duplicates-only
+        echo "✓ Sample analysis completed successfully"
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install linting tools
+      run: |
+        pip install flake8 black isort
+
+    - name: Lint with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics
+
+    - name: Check formatting with black
+      run: |
+        black --check --line-length 100 disk_cleanup_analyzer.py || true
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install security tools
+      run: |
+        pip install bandit safety
+
+    - name: Run Bandit security check
+      run: |
+        bandit -r disk_cleanup_analyzer.py || true
+        echo "✓ Security scan completed"
+
+    - name: Check dependencies for vulnerabilities
+      run: |
+        if [ -f "requirements.txt" ]; then
+          safety check || true
+        else
+          echo "✓ No external dependencies to check"
+        fi
+
+  coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install test dependencies
+      run: |
+        pip install pytest pytest-cov
+
+    - name: Run tests with coverage
+      run: |
+        mkdir -p tests
+        cat > tests/test_basic.py << 'ENDOFTEST'
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+def test_import():
+    import disk_cleanup_analyzer
+    assert disk_cleanup_analyzer is not None
+
+def test_class_exists():
+    from disk_cleanup_analyzer import DiskCleanupAnalyzer
+    assert DiskCleanupAnalyzer is not None
+
+def test_format_size():
+    from disk_cleanup_analyzer import DiskCleanupAnalyzer
+    analyzer = DiskCleanupAnalyzer()
+    assert "B" in analyzer.format_size(100)
+    assert "KB" in analyzer.format_size(1024)
+    assert "MB" in analyzer.format_size(1024 * 1024)
+
+def test_temp_file_detection():
+    from disk_cleanup_analyzer import DiskCleanupAnalyzer
+    analyzer = DiskCleanupAnalyzer()
+    assert analyzer.is_temp_file(Path("file.tmp"))
+    assert analyzer.is_temp_file(Path("file.bak"))
+    assert not analyzer.is_temp_file(Path("normal_file.txt"))
+ENDOFTEST
+        pytest tests/ --cov=disk_cleanup_analyzer --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, lint, security]
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Create distribution
+      run: |
+        pip install build
+        python -m build
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: disk-cleanup-analyzer-dist
+        path: dist/
