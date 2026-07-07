@@ -400,39 +400,42 @@ class ModernDiskCleanupGUI(QMainWindow):
         self.load_drives()
 
     def apply_modern_style(self):
-        """Apply clean, professional styling with proper contrast."""
+        """Apply professional dark theme with the specified color scheme."""
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #f5f6fa;
+                background-color: #222222;
             }
             QGroupBox {
                 font-weight: bold;
                 font-size: 13px;
-                border: 2px solid #3498db;
+                border: 1px solid #303b36;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
-                background-color: white;
-                color: #2c3e50;
+                background-color: #171d1b;
+                color: #eff7f1;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px;
-                color: #2c3e50;
+                color: #eff7f1;
             }
             QTableWidget {
-                background-color: white;
-                alternate-background-color: #f8f9fa;
-                gridline-color: #bdc3c7;
-                selection-background-color: #3498db;
+                background-color: #1f2824;
+                alternate-background-color: #222222;
+                gridline-color: #303b36;
+                selection-background-color: #46c58f;
                 selection-color: white;
-                border: 1px solid #bdc3c7;
+                border: 1px solid #303b36;
                 border-radius: 3px;
-                gridline-color: #ecf0f1;
+            }
+            QTableWidget::item {
+                padding: 4px;
+                color: #eff7f1;
             }
             QHeaderView::section {
-                background-color: #3498db;
+                background-color: #46c58f;
                 color: white;
                 padding: 8px;
                 border: none;
@@ -441,57 +444,63 @@ class ModernDiskCleanupGUI(QMainWindow):
             QCheckBox {
                 spacing: 5px;
                 font-size: 13px;
+                color: #eff7f1;
             }
             QSlider::groove:horizontal {
-                border: 1px solid #bdc3c7;
+                border: 1px solid #303b36;
                 height: 8px;
-                background: #ecf0f1;
+                background: #1f2824;
                 border-radius: 4px;
             }
             QSlider::handle:horizontal {
-                background: #3498db;
-                border: 1px solid #2980b9;
+                background: #46c58f;
+                border: 1px solid #00c6ff;
                 width: 16px;
                 margin: -4px 0;
                 border-radius: 8px;
             }
             QSlider::handle:horizontal:hover {
-                background: #2980b9;
+                background: #00c6ff;
             }
             QPushButton {
                 font-size: 13px;
                 padding: 10px 20px;
                 border-radius: 5px;
                 border: none;
-                background-color: #3498db;
+                background-color: #46c58f;
                 color: white;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #2980b9;
+                background-color: #00c6ff;
             }
             QPushButton:disabled {
-                background-color: #95a5a6;
+                background-color: #303b36;
+                color: #9eaaa4;
             }
             QProgressBar {
-                border: 2px solid #3498db;
+                border: 2px solid #46c58f;
                 border-radius: 5px;
                 text-align: center;
-                background-color: #ecf0f1;
+                background-color: #1f2824;
                 height: 25px;
+                color: #eff7f1;
             }
             QProgressBar::chunk {
-                background-color: #3498db;
+                background-color: #46c58f;
                 border-radius: 4px;
             }
             QTextEdit {
-                background-color: white;
-                color: #000000;
-                border: 1px solid #bdc3c7;
+                background-color: #1f2824;
+                color: #eff7f1;
+                border: 1px solid #303b36;
                 border-radius: 3px;
                 padding: 5px;
                 font-family: Consolas, monospace;
                 font-size: 11px;
+            }
+            QLabel {
+                color: #eff7f1;
             }
         """)
 
